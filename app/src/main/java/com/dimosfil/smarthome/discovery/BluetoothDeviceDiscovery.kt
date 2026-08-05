@@ -27,6 +27,11 @@ class BluetoothDeviceDiscovery(
 
     override val devices: StateFlow<List<SmartDevice>> = mutableDevices.asStateFlow()
 
+    override fun clear() {
+        discovered.clear()
+        mutableDevices.value = emptyList()
+    }
+
     private val callback = object : ScanCallback() {
         override fun onScanResult(callbackType: Int, result: ScanResult) {
             publish(result)
@@ -39,6 +44,9 @@ class BluetoothDeviceDiscovery(
 
     @SuppressLint("MissingPermission")
     override fun start(): Result<Unit> = runCatching {
+        if (!scanning) {
+            clear()
+        }
         check(hasScanPermission()) { "Нет разрешения на поиск Bluetooth-устройств" }
         val adapter = bluetoothManager?.adapter
         check(adapter != null) { "Bluetooth LE не поддерживается" }

@@ -15,6 +15,8 @@ class DeviceRepository(
     )
 
     fun start(includeBluetooth: Boolean): List<String> = buildList {
+        bluetooth.clear()
+        wifi.clear()
         wifi.start().exceptionOrNull()?.message?.let(::add)
         if (includeBluetooth) {
             bluetooth.start().exceptionOrNull()?.message?.let(::add)

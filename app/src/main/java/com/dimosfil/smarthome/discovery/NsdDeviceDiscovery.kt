@@ -25,7 +25,15 @@ class NsdDeviceDiscovery(
 
     override val devices: StateFlow<List<SmartDevice>> = mutableDevices.asStateFlow()
 
+    override fun clear() {
+        discovered.clear()
+        mutableDevices.value = emptyList()
+    }
+
     override fun start(): Result<Unit> = runCatching {
+        if (listeners.isEmpty()) {
+            clear()
+        }
         check(nsdManager != null) { "Wi-Fi discovery не поддерживается" }
         serviceTypes.forEach { type ->
             if (!listeners.containsKey(type)) {

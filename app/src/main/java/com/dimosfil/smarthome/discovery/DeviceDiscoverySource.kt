@@ -9,4 +9,6 @@ interface DeviceDiscoverySource {
     fun start(): Result<Unit>
 
     fun stop()
+
+    fun clear()
 }

@@ -16,7 +16,7 @@ yet.
 
 Build a working prototype that demonstrates an end-to-end smart-device flow:
 
-- connect or add at least one supported physical device or emulator;
+- connect or add at least one supported physical device;
 - show its connection status and current state;
 - perform at least one meaningful control action;
 - surface connection and command failures clearly to the user.

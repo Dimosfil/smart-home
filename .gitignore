@@ -25,3 +25,6 @@ captures/
 .externalNativeBuild/
 .cxx/
 .tooling/
+app/libs/security-algorithm.aar
+/Android_SDK/
+/Android_SDK.zip

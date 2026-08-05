@@ -11,6 +11,9 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        maven("https://maven-other.tuya.com/repository/maven-releases/")
+        maven("https://maven-other.tuya.com/repository/maven-commercial-releases/")
+        maven("https://jitpack.io")
     }
 }
 
