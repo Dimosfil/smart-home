@@ -3,7 +3,8 @@
 Last reviewed: 2026-08-05
 
 Status: the Tuya-first Smart Life SDK adapter is implemented for account/Home,
-BLE discovery, combo activation, persistence and DP on/off control. Runtime
+BLE discovery, combo activation, persistence, DP on/off control, and confirmed
+cloud unbinding before local deletion. Runtime
 enablement and physical verification are pending the app-specific Tuya security
 component, credentials, registered signing certificate and reference device.
 No simulated candidate is injected into runtime discovery.
@@ -298,7 +299,7 @@ evidence remains required before claiming support for a physical product.
 
 ## Current implementation map
 
-- Tuya BLE discovery, activation and control: `app/src/main/java/com/dimosfil/smarthome/tuya/TuyaIntegration.kt`
+- Tuya BLE discovery, activation, control and Home unbinding: `app/src/main/java/com/dimosfil/smarthome/tuya/TuyaIntegration.kt`
 - generic BLE discovery retained for future vendor adapters: `app/src/main/java/com/dimosfil/smarthome/discovery/BluetoothDeviceDiscovery.kt`
 - mDNS discovery: `app/src/main/java/com/dimosfil/smarthome/discovery/NsdDeviceDiscovery.kt`
 - merged discovery list: `app/src/main/java/com/dimosfil/smarthome/discovery/DeviceRepository.kt`

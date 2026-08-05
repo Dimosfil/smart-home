@@ -43,6 +43,7 @@ through the prototype HTTP contract documented in
 - profile/provisioner/controller adapter registries for real integrations;
 - persistent device name, room, endpoint, connectivity, and last power state;
 - state read and on/off commands for the prototype local HTTP adapter;
+- confirmed device removal, including Tuya Home unbinding before local deletion;
 - visible permission, discovery, transport, timeout, protocol, and HTTP errors.
 - Smart Life App SDK 7.8.0 integration: automatic UID session/Home preparation, Tuya BLE scan,
   combo-device activation, DP power discovery, and on/off commands. A
@@ -97,6 +98,7 @@ Debug APK: `app/build/outputs/apk/debug/app-debug.apk`.
 - реестр профилей и адаптеров для реальных интеграций;
 - сохранение имени, комнаты, endpoint, статуса и последнего состояния питания;
 - чтение состояния и команды включения/выключения через локальный HTTP-адаптер;
+- удаление с подтверждением и отвязкой Tuya-устройства от Home;
 - понятные ошибки разрешений, обнаружения, транспорта, таймаутов и HTTP.
 - интеграция Smart Life App SDK 7.8.0: аккаунт и Home, Tuya BLE-поиск,
   активация combo-устройства, определение DP питания и команды ВКЛ/ВЫКЛ.

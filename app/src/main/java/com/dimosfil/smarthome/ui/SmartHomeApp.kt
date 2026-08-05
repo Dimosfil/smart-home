@@ -24,6 +24,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -139,6 +140,7 @@ fun SmartHomeApp(
                     onBack = model::goBack,
                     onRefresh = model::refreshPower,
                     onPowerChange = model::setPower,
+                    onDelete = model::removeSelectedDevice,
                 )
             }
         }
@@ -760,7 +762,9 @@ private fun ControlScreen(
     onBack: () -> Unit,
     onRefresh: () -> Unit,
     onPowerChange: (Boolean) -> Unit,
+    onDelete: () -> Unit,
 ) {
+    var showDeleteConfirmation by rememberSaveable { mutableStateOf(false) }
     Scaffold(topBar = { AppTopBar(device.name, onBack) }) { padding ->
         Column(
             modifier = Modifier
@@ -812,8 +816,42 @@ private fun ControlScreen(
             OutlinedButton(onClick = onRefresh, enabled = !state.isBusy) {
                 Text(stringResource(R.string.refresh_state))
             }
+            OutlinedButton(
+                onClick = { showDeleteConfirmation = true },
+                enabled = !state.isBusy,
+            ) {
+                Text(
+                    stringResource(R.string.delete_device),
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
             state.errorMessage?.let { ErrorCard(it) }
         }
+    }
+    if (showDeleteConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmation = false },
+            title = { Text(stringResource(R.string.delete_device_title)) },
+            text = { Text(stringResource(R.string.delete_device_message, device.name)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteConfirmation = false
+                        onDelete()
+                    },
+                ) {
+                    Text(
+                        stringResource(R.string.delete_device_confirm),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirmation = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
+        )
     }
 }
 

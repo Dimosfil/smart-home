@@ -24,7 +24,7 @@ stack facts, commands, runtime assumptions, and operational notes here.
 | Language/runtime | Kotlin 2.1.10, Java 17 bytecode | `build.gradle.kts`, `app/build.gradle.kts` | Android API 26+ |
 | Frontend | Jetpack Compose BOM 2025.02.00, Material 3 | `app/build.gradle.kts`, `MainActivity.kt` | Russian prototype UI |
 | Device discovery | Android BLE scan, `WifiManager` access-point scan, and `NsdManager` DNS-SD | `discovery/`, `onboarding/AndroidWifiNetworkScanner.kt` | BLE, selectable 2.4 GHz SSIDs, and local Wi-Fi services |
-| Device onboarding/control | Smart Life SDK 7.8.0 Tuya adapter plus profile/provisioner/controller boundaries and local HTTP controller | `tuya/`, `onboarding/`, `control/` | Tuya runtime requires app-specific security AAR and credentials |
+| Device onboarding/control | Smart Life SDK 7.8.0 Tuya adapter plus profile/provisioner/controller/remover boundaries and local HTTP controller | `tuya/`, `onboarding/`, `control/` | Tuya runtime requires app-specific security AAR and credentials |
 | Data/storage | `StateFlow` UI state and SharedPreferences JSON device store | `OnboardingViewModel.kt`, `persistence/DeviceStore.kt` | Wi-Fi passwords are never persisted |
 | Build/package | Gradle 8.11.1, Android Gradle Plugin 8.9.2 | wrapper and Gradle manifests | Debug APK verified |
 | Test/quality | JUnit 4 and Android lint | `app/src/test/`, Gradle tasks | Physical-device checks outstanding |
@@ -44,7 +44,7 @@ stack facts, commands, runtime assumptions, and operational notes here.
 | Service | Role | Evidence | Boundary |
 | --- | --- | --- | --- |
 | Local smart switch | Device discovery and commands | `smart-switch-mvp.md` | Local network; protocol adapter required |
-| Tuya Smart Life SDK | BLE discovery, combo activation, account/Home and DP control | `tuya/TuyaIntegration.kt`, `docs/tuya-setup.md` | App credentials, security component, registered SHA-256 and physical device are required |
+| Tuya Smart Life SDK | BLE discovery, combo activation, account/Home, DP control and device unbinding | `tuya/TuyaIntegration.kt`, `docs/tuya-setup.md` | App credentials, security component, registered SHA-256 and physical device are required |
 
 ## Gaps
 

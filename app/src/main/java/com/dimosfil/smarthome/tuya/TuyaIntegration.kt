@@ -8,6 +8,7 @@ import com.dimosfil.smarthome.model.DeviceTransport
 import com.dimosfil.smarthome.model.SmartDevice
 import com.dimosfil.smarthome.onboarding.DeviceProfileRegistry
 import com.dimosfil.smarthome.onboarding.DeviceProvisioner
+import com.dimosfil.smarthome.onboarding.DeviceRemover
 import com.dimosfil.smarthome.onboarding.ProvisionedDevice
 import com.dimosfil.smarthome.onboarding.ProvisioningProgress
 import com.dimosfil.smarthome.onboarding.ProvisioningRequest
@@ -49,7 +50,11 @@ data class TuyaSessionStatus(
     val ready: Boolean get() = configured && loggedIn && homeId != null
 }
 
-class TuyaIntegration(context: Context) : DeviceDiscoverySource, DeviceProvisioner, SwitchController {
+class TuyaIntegration(context: Context) :
+    DeviceDiscoverySource,
+    DeviceProvisioner,
+    DeviceRemover,
+    SwitchController {
     private val identityPreferences = context.applicationContext.getSharedPreferences(
         IDENTITY_PREFERENCES_NAME,
         Context.MODE_PRIVATE,
@@ -271,6 +276,20 @@ class TuyaIntegration(context: Context) : DeviceDiscoverySource, DeviceProvision
         val dp = powerDp(bean) ?: error("Устройство не содержит доступного Boolean DP питания.")
         bean.getDps()?.get(dp) as? Boolean
             ?: error("Tuya не вернула состояние DP $dp.")
+    }
+
+    override suspend fun remove(device: SmartDevice): Result<Unit> {
+        if (!session.value.ready) {
+            return Result.failure(IllegalStateException("Сессия Tuya не готова."))
+        }
+        val deviceId = device.endpoint.takeIf(String::isNotBlank)
+            ?: return Result.failure(IllegalArgumentException("У устройства отсутствует Tuya deviceId."))
+        val thingDevice = ThingHomeSdk.newDeviceInstance(deviceId)
+        return try {
+            suspendResult { callback -> thingDevice.removeDevice(callback) }
+        } finally {
+            thingDevice.onDestroy()
+        }
     }
 
     override suspend fun setPower(device: SmartDevice, enabled: Boolean): Result<Boolean> {

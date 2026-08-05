@@ -360,6 +360,39 @@ class OnboardingViewModel(
         controller.setPower(device.asSmartDevice(), enabled)
     }
 
+    fun removeSelectedDevice() {
+        val current = mutableState.value
+        val saved = current.savedDevices.firstOrNull { it.id == current.selectedSavedDeviceId } ?: return
+        val remover = integrations.profile(saved.profileId)?.let(integrations::remover)
+        operationJob?.cancel()
+        operationJob = viewModelScope.launch {
+            mutableState.update { it.copy(isBusy = true, errorMessage = null) }
+            val removal = remover?.remove(saved.asSmartDevice()) ?: Result.success(Unit)
+            removal.fold(
+                onSuccess = {
+                    deviceStore.remove(saved.id)
+                    mutableState.update {
+                        it.copy(
+                            screen = OnboardingScreen.DeviceList,
+                            selectedSavedDeviceId = null,
+                            powerState = null,
+                            isBusy = false,
+                            errorMessage = null,
+                        )
+                    }
+                },
+                onFailure = { error ->
+                    mutableState.update {
+                        it.copy(
+                            isBusy = false,
+                            errorMessage = error.message ?: "Не удалось удалить устройство.",
+                        )
+                    }
+                },
+            )
+        }
+    }
+
     fun dismissError() {
         mutableState.update { it.copy(errorMessage = null) }
     }

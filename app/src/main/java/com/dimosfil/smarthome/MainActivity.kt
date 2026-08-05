@@ -51,6 +51,7 @@ class MainActivity : ComponentActivity() {
                 DeviceProfileRegistry.HTTP_CONTROLLER to HttpSwitchController(),
                 DeviceProfileRegistry.TUYA_CONTROLLER to tuya,
             ),
+            removers = mapOf(DeviceProfileRegistry.TUYA_CONTROLLER to tuya),
         )
         val factory = OnboardingViewModel.Factory(
             repository = repository,

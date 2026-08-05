@@ -14,6 +14,8 @@ interface DeviceStore {
     val devices: StateFlow<List<SavedDevice>>
 
     fun upsert(device: SavedDevice)
+
+    fun remove(deviceId: String)
 }
 
 class SharedPreferencesDeviceStore(context: Context) : DeviceStore {
@@ -26,6 +28,13 @@ class SharedPreferencesDeviceStore(context: Context) : DeviceStore {
     override fun upsert(device: SavedDevice) {
         val updated = (mutableDevices.value.filterNot { it.id == device.id } + device)
             .sortedBy(SavedDevice::name)
+        preferences.edit { putString(KEY_DEVICES, encode(updated)) }
+        mutableDevices.value = updated
+    }
+
+    @Synchronized
+    override fun remove(deviceId: String) {
+        val updated = mutableDevices.value.filterNot { it.id == deviceId }
         preferences.edit { putString(KEY_DEVICES, encode(updated)) }
         mutableDevices.value = updated
     }

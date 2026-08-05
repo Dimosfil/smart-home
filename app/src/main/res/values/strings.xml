@@ -62,6 +62,10 @@
     <string name="power_on">Питание включено</string>
     <string name="power_off">Питание выключено</string>
     <string name="refresh_state">Обновить состояние</string>
+    <string name="delete_device">Удалить устройство</string>
+    <string name="delete_device_title">Удаление устройства</string>
+    <string name="delete_device_message">Удалить «%1$s»? Если устройство связано с Tuya Home, приложение также выполнит отвязку. Для офлайн-устройства перед повторным подключением может потребоваться ручной сброс.</string>
+    <string name="delete_device_confirm">Удалить</string>
     <string name="back">‹ Назад</string>
     <string name="error">Ошибка</string>
     <string name="missing_state">Данные текущего шага потеряны. Вернитесь к списку устройств.</string>
