@@ -23,6 +23,29 @@ class DeviceProfileRegistryTest {
     }
 
     @Test
+    fun `shelly mdns discovery maps to local controller`() {
+        val profile = registry.resolve(
+            device("shelly:shellyplusplugs-aabbcc", DeviceTransport.Wifi).copy(
+                name = "shellyplusplugs-aabbcc",
+                serviceType = "_shelly._tcp.",
+            ),
+        )
+
+        assertEquals(DeviceProfileRegistry.shellyProfile, profile)
+        assertEquals(ConnectivityClass.LocalNative, profile.connectivityClass)
+    }
+
+    @Test
+    fun `shelly access point requires wifi provisioning`() {
+        val profile = registry.resolve(
+            device("shelly-ap:shellyplusplugs-aabbcc", DeviceTransport.Wifi),
+        )
+
+        assertEquals(ProvisioningMode.RequiresWifiCredentials, profile.provisioningMode)
+        assertEquals(DeviceProfileRegistry.SHELLY_CONTROLLER, profile.controllerKey)
+    }
+
+    @Test
     fun `unknown bluetooth device is not treated as compatible`() {
         val profile = registry.resolve(device("ble:unknown", DeviceTransport.Bluetooth))
 

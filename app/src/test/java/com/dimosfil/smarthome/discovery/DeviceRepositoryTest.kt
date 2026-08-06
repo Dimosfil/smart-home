@@ -33,12 +33,32 @@ class DeviceRepositoryTest {
         assertEquals(listOf(discoveredWifi), repository.devices.first { it.isNotEmpty() })
     }
 
-    private class RecordingDiscoverySource(initial: List<SmartDevice>) : DeviceDiscoverySource {
+    @Test
+    fun `wifi discovery continues when cloud bluetooth source is unavailable`() {
+        val bluetooth = RecordingDiscoverySource(emptyList(), startError = "Cloud unavailable")
+        val wifi = RecordingDiscoverySource(emptyList())
+        val repository = DeviceRepository(bluetooth, wifi)
+
+        val errors = repository.start(includeBluetooth = true)
+
+        assertEquals(listOf("Cloud unavailable"), errors)
+        assertEquals(1, wifi.startCount)
+    }
+
+    private class RecordingDiscoverySource(
+        initial: List<SmartDevice>,
+        private val startError: String? = null,
+    ) : DeviceDiscoverySource {
         private val mutableDevices = MutableStateFlow(initial)
+        var startCount: Int = 0
+            private set
 
         override val devices: StateFlow<List<SmartDevice>> = mutableDevices
 
-        override fun start(): Result<Unit> = Result.success(Unit)
+        override fun start(): Result<Unit> {
+            startCount += 1
+            return startError?.let { Result.failure(IllegalStateException(it)) } ?: Result.success(Unit)
+        }
 
         override fun stop() = Unit
 

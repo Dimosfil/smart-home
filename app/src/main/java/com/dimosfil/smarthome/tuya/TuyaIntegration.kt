@@ -133,10 +133,12 @@ class TuyaIntegration(context: Context) :
         return identity
     }
 
-    override fun start(): Result<Unit> = runCatching {
-        check(session.value.ready) {
-            session.value.error ?: "Войдите в Tuya и дождитесь загрузки дома."
+    override fun start(): Result<Unit> {
+        if (!session.value.ready) {
+            clear()
+            return Result.success(Unit)
         }
+        return runCatching {
         scanBeans.clear()
         mutableDevices.value = emptyList()
         val settings = LeScanSetting.Builder()
@@ -145,6 +147,7 @@ class TuyaIntegration(context: Context) :
             .setRepeatFilter(false)
             .build()
         ThingHomeSdk.getBleOperator().startLeScan(settings, BleScanResponse(::onScanResult))
+        }
     }
 
     override fun stop() {

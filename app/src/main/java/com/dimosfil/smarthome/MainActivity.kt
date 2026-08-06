@@ -22,12 +22,14 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.dimosfil.smarthome.control.HttpSwitchController
+import com.dimosfil.smarthome.control.ShellySwitchController
 import com.dimosfil.smarthome.discovery.DeviceRepository
 import com.dimosfil.smarthome.discovery.NsdDeviceDiscovery
 import com.dimosfil.smarthome.onboarding.DeviceIntegrationRegistry
 import com.dimosfil.smarthome.onboarding.DeviceProfileRegistry
 import com.dimosfil.smarthome.onboarding.AndroidWifiNetworkScanner
 import com.dimosfil.smarthome.onboarding.OnboardingScreen
+import com.dimosfil.smarthome.onboarding.ShellyProvisioner
 import com.dimosfil.smarthome.persistence.SharedPreferencesDeviceStore
 import com.dimosfil.smarthome.ui.OnboardingUiState
 import com.dimosfil.smarthome.ui.OnboardingViewModel
@@ -44,11 +46,16 @@ class MainActivity : ComponentActivity() {
             wifi = NsdDeviceDiscovery(applicationContext),
         )
         val profiles = DeviceProfileRegistry()
+        val shellyProvisioner = ShellyProvisioner(applicationContext)
         val integrations = DeviceIntegrationRegistry(
             profileRegistry = profiles,
-            provisioners = mapOf(DeviceProfileRegistry.tuyaProfile.id to tuya),
+            provisioners = mapOf(
+                DeviceProfileRegistry.tuyaProfile.id to tuya,
+                DeviceProfileRegistry.shellyProfile.id to shellyProvisioner,
+            ),
             controllers = mapOf(
                 DeviceProfileRegistry.HTTP_CONTROLLER to HttpSwitchController(),
+                DeviceProfileRegistry.SHELLY_CONTROLLER to ShellySwitchController(),
                 DeviceProfileRegistry.TUYA_CONTROLLER to tuya,
             ),
             removers = mapOf(DeviceProfileRegistry.TUYA_CONTROLLER to tuya),
@@ -98,6 +105,11 @@ private fun PermissionAwareApp(state: OnboardingUiState, model: OnboardingViewMo
         ActivityResultContracts.RequestMultiplePermissions(),
     ) { result ->
         wifiScanGranted = result.values.all { it }
+        when (state.screen) {
+            OnboardingScreen.DeviceList -> model.openDiscovery(bluetoothGranted)
+            OnboardingScreen.NetworkSetup -> if (wifiScanGranted) model.scanWifiNetworks()
+            else -> Unit
+        }
     }
 
     LaunchedEffect(state.screen, wifiScanGranted) {

@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.dimosfil.smarthome.discovery.DeviceRepository
+import com.dimosfil.smarthome.model.DeviceTransport
+import com.dimosfil.smarthome.model.SmartDevice
 import com.dimosfil.smarthome.onboarding.DeviceCandidate
 import com.dimosfil.smarthome.onboarding.DeviceIntegrationRegistry
 import com.dimosfil.smarthome.onboarding.DeviceProfileRegistry
@@ -22,8 +24,10 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 data class OnboardingUiState(
     val screen: OnboardingScreen = OnboardingScreen.DeviceList,
@@ -61,14 +65,18 @@ class OnboardingViewModel(
     private val mutableState = MutableStateFlow(OnboardingUiState())
     private var operationJob: Job? = null
     private var wifiScanJob: Job? = null
+    private var shellyApScanJob: Job? = null
+    private var provisioningProgressJob: Job? = null
+    private var discoveredDevices: List<SmartDevice> = emptyList()
+    private var shellyApDevices: List<SmartDevice> = emptyList()
 
     val state: StateFlow<OnboardingUiState> = mutableState.asStateFlow()
 
     init {
         viewModelScope.launch {
             repository.devices.collect { devices ->
-                val candidates = devices.map { DeviceCandidate(it, profileRegistry.resolve(it)) }
-                mutableState.update { it.copy(candidates = candidates) }
+                discoveredDevices = devices
+                publishCandidates()
             }
         }
         viewModelScope.launch {
@@ -89,11 +97,6 @@ class OnboardingViewModel(
             }
         }
         viewModelScope.launch {
-            tuya.progress.collect { progress ->
-                mutableState.update { it.copy(provisioningProgress = progress) }
-            }
-        }
-        viewModelScope.launch {
             if (tuya.session.value.configured) {
                 mutableState.update { it.copy(accountMessage = "Автоматическое подключение к Tuya…") }
                 tuya.connectAutomatically().onFailure { error ->
@@ -106,12 +109,6 @@ class OnboardingViewModel(
     }
 
     fun openDiscovery(includeBluetooth: Boolean) {
-        if (!tuya.session.value.ready) {
-            mutableState.update {
-                it.copy(errorMessage = tuya.session.value.error ?: "Сначала войдите в аккаунт Tuya.")
-            }
-            return
-        }
         val current = mutableState.value.screen
         val next = if (current == OnboardingScreen.DeviceList) {
             OnboardingStateMachine.transition(current, OnboardingEvent.AddDevice)
@@ -129,6 +126,7 @@ class OnboardingViewModel(
     }
 
     fun startDiscovery(includeBluetooth: Boolean) {
+        shellyApDevices = emptyList()
         mutableState.update {
             it.copy(
                 candidates = emptyList(),
@@ -140,11 +138,51 @@ class OnboardingViewModel(
         mutableState.update {
             it.copy(errorMessage = errors.takeIf { it.isNotEmpty() }?.joinToString("\n"))
         }
+        scanShellyAccessPoints()
     }
 
     fun stopDiscovery() {
         repository.stop()
+        shellyApScanJob?.cancel()
         mutableState.update { it.copy(isScanning = false) }
+    }
+
+    private fun scanShellyAccessPoints() {
+        shellyApScanJob?.cancel()
+        shellyApScanJob = viewModelScope.launch {
+            wifiNetworkScanner.scan().fold(
+                onSuccess = { networks ->
+                    shellyApDevices = networks
+                        .filter { it.ssid.startsWith("shelly", ignoreCase = true) }
+                        .map { network ->
+                            SmartDevice(
+                                id = "shelly-ap:${network.ssid.lowercase()}",
+                                name = network.ssid,
+                                transport = DeviceTransport.Wifi,
+                                endpoint = "192.168.33.1",
+                                serviceType = "shelly-ap",
+                                signalStrength = network.signalLevelDbm,
+                            )
+                        }
+                    publishCandidates()
+                },
+                onFailure = { error ->
+                    mutableState.update { current ->
+                        current.copy(
+                            errorMessage = current.errorMessage ?: error.message
+                                ?: "Не удалось найти точки доступа локальных устройств.",
+                        )
+                    }
+                },
+            )
+        }
+    }
+
+    private fun publishCandidates() {
+        val candidates = (discoveredDevices + shellyApDevices)
+            .distinctBy(SmartDevice::id)
+            .map { DeviceCandidate(it, profileRegistry.resolve(it)) }
+        mutableState.update { it.copy(candidates = candidates) }
     }
 
     fun selectCandidate(candidate: DeviceCandidate) {
@@ -264,6 +302,12 @@ class OnboardingViewModel(
                 errorMessage = null,
             )
         }
+        provisioningProgressJob?.cancel()
+        provisioningProgressJob = viewModelScope.launch {
+            provisioner.progress.collect { progress ->
+                mutableState.update { it.copy(provisioningProgress = progress) }
+            }
+        }
         operationJob?.cancel()
         operationJob = viewModelScope.launch {
             provisioner.provision(
@@ -279,6 +323,7 @@ class OnboardingViewModel(
                         endpoint = result.device.endpoint,
                         serviceType = result.device.serviceType,
                         powerState = result.initialPowerState,
+                        connectivityClass = candidate.profile.connectivityClass,
                     )
                     deviceStore.upsert(saved)
                     mutableState.update {
@@ -307,6 +352,7 @@ class OnboardingViewModel(
                     }
                 },
             )
+            provisioningProgressJob?.cancel()
         }
     }
 
@@ -354,9 +400,11 @@ class OnboardingViewModel(
         refreshPower()
     }
 
-    fun refreshPower() = runControl { controller, device -> controller.readState(device.asSmartDevice()) }
+    fun refreshPower() = runControl(rediscoverLocalEndpoint = true) { controller, device ->
+        controller.readState(device.asSmartDevice())
+    }
 
-    fun setPower(enabled: Boolean) = runControl { controller, device ->
+    fun setPower(enabled: Boolean) = runControl(rediscoverLocalEndpoint = false) { controller, device ->
         controller.setPower(device.asSmartDevice(), enabled)
     }
 
@@ -469,6 +517,7 @@ class OnboardingViewModel(
                         endpoint = candidate.device.endpoint,
                         serviceType = candidate.device.serviceType,
                         powerState = power,
+                        connectivityClass = candidate.profile.connectivityClass,
                     )
                     deviceStore.upsert(saved)
                     mutableState.update {
@@ -499,6 +548,7 @@ class OnboardingViewModel(
     }
 
     private fun runControl(
+        rediscoverLocalEndpoint: Boolean,
         block: suspend (
             com.dimosfil.smarthome.control.SwitchController,
             SavedDevice,
@@ -515,13 +565,14 @@ class OnboardingViewModel(
         operationJob?.cancel()
         operationJob = viewModelScope.launch {
             mutableState.update { it.copy(isBusy = true, errorMessage = null) }
-            block(controller, saved).fold(
+            val target = if (rediscoverLocalEndpoint) rediscoverShellyEndpoint(saved) else saved
+            block(controller, target).fold(
                 onSuccess = { power ->
-                    deviceStore.upsert(saved.copy(powerState = power, isOnline = true))
+                    deviceStore.upsert(target.copy(powerState = power, isOnline = true))
                     mutableState.update { it.copy(isBusy = false, powerState = power) }
                 },
                 onFailure = { error ->
-                    deviceStore.upsert(saved.copy(isOnline = false))
+                    deviceStore.upsert(target.copy(isOnline = false))
                     mutableState.update {
                         it.copy(
                             isBusy = false,
@@ -533,9 +584,29 @@ class OnboardingViewModel(
         }
     }
 
+    private suspend fun rediscoverShellyEndpoint(saved: SavedDevice): SavedDevice {
+        if (saved.profileId != DeviceProfileRegistry.shellyProfile.id) return saved
+        repository.start(includeBluetooth = false)
+        return try {
+            val discovered = withTimeoutOrNull(LOCAL_REDISCOVERY_TIMEOUT_MILLIS) {
+                repository.devices.first { devices -> devices.any { it.id == saved.id } }
+                    .first { it.id == saved.id }
+            } ?: return saved
+            saved.copy(
+                endpoint = discovered.endpoint,
+                serviceType = discovered.serviceType,
+                isOnline = true,
+            ).also(deviceStore::upsert)
+        } finally {
+            repository.stop()
+        }
+    }
+
     override fun onCleared() {
         repository.stop()
         mutableState.value.selectedCandidate?.profile?.let(integrations::provisioner)?.cancel()
+        shellyApScanJob?.cancel()
+        provisioningProgressJob?.cancel()
         operationJob?.cancel()
     }
 
@@ -556,5 +627,9 @@ class OnboardingViewModel(
             wifiNetworkScanner,
             tuya,
         ) as T
+    }
+
+    private companion object {
+        const val LOCAL_REDISCOVERY_TIMEOUT_MILLIS = 5_000L
     }
 }

@@ -65,6 +65,7 @@ import androidx.compose.ui.unit.sp
 import com.dimosfil.smarthome.R
 import com.dimosfil.smarthome.model.DeviceTransport
 import com.dimosfil.smarthome.onboarding.DeviceCandidate
+import com.dimosfil.smarthome.onboarding.ConnectivityClass
 import com.dimosfil.smarthome.onboarding.OnboardingScreen
 import com.dimosfil.smarthome.onboarding.ProvisioningMode
 import com.dimosfil.smarthome.onboarding.ProvisioningStage
@@ -86,14 +87,18 @@ fun SmartHomeApp(
         when (state.screen) {
             OnboardingScreen.DeviceList -> DeviceListScreen(
                 state = state,
-                onAdd = { model.openDiscovery(bluetoothGranted) },
+                onAdd = {
+                    if (wifiScanGranted) model.openDiscovery(bluetoothGranted) else onRequestWifiScan()
+                },
                 onOpen = model::openControl,
             )
             OnboardingScreen.Discovery -> DiscoveryScreen(
                 state = state,
                 bluetoothGranted = bluetoothGranted,
+                wifiScanGranted = wifiScanGranted,
                 onBack = model::goBack,
                 onRequestBluetooth = onRequestBluetooth,
+                onRequestWifiScan = onRequestWifiScan,
                 onToggleScan = {
                     if (state.isScanning) model.stopDiscovery() else model.startDiscovery(bluetoothGranted)
                 },
@@ -184,7 +189,6 @@ private fun DeviceListScreen(
             item {
                 Button(
                     onClick = onAdd,
-                    enabled = state.tuyaHomeReady,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(54.dp),
@@ -229,6 +233,12 @@ private fun TuyaAccountCard(
                 else -> Text(
                     stringResource(R.string.tuya_connecting),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (!state.tuyaHomeReady) {
+                Text(
+                    "Локальные устройства можно добавлять и использовать независимо от Tuya.",
+                    color = MaterialTheme.colorScheme.primary,
                 )
             }
             state.accountMessage?.let { message ->
@@ -299,6 +309,11 @@ private fun SavedDeviceCard(device: SavedDevice, onClick: () -> Unit) {
                     text = if (device.isOnline) stringResource(R.string.online) else stringResource(R.string.offline),
                     color = if (device.isOnline) Color(0xFF008B6B) else MaterialTheme.colorScheme.error,
                 )
+                Text(
+                    text = connectivityLabel(device.connectivityClass),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
             Text(
                 text = when (device.powerState) {
@@ -318,8 +333,10 @@ private fun SavedDeviceCard(device: SavedDevice, onClick: () -> Unit) {
 private fun DiscoveryScreen(
     state: OnboardingUiState,
     bluetoothGranted: Boolean,
+    wifiScanGranted: Boolean,
     onBack: () -> Unit,
     onRequestBluetooth: () -> Unit,
+    onRequestWifiScan: () -> Unit,
     onToggleScan: () -> Unit,
     onSelect: (DeviceCandidate) -> Unit,
 ) {
@@ -350,6 +367,18 @@ private fun DiscoveryScreen(
                             Text(stringResource(R.string.bluetooth_permission_hint))
                             TextButton(onClick = onRequestBluetooth) {
                                 Text(stringResource(R.string.allow_bluetooth))
+                            }
+                        }
+                    }
+                }
+            }
+            if (!wifiScanGranted) {
+                item {
+                    Card(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(16.dp)) {
+                            Text("Разрешите поиск Wi‑Fi сетей, чтобы находить новые точки доступа Shelly.")
+                            TextButton(onClick = onRequestWifiScan) {
+                                Text("Разрешить поиск Wi‑Fi")
                             }
                         }
                     }
@@ -441,6 +470,11 @@ private fun CandidateCard(candidate: DeviceCandidate, onClick: () -> Unit) {
             ) {
                 Text(candidate.device.name, style = MaterialTheme.typography.titleMedium)
                 Text(candidate.profile.displayName, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    connectivityLabel(candidate.profile.connectivityClass),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
             }
             Text("›", fontSize = 28.sp)
         }
@@ -509,11 +543,16 @@ private fun InstallationScreen(
 }
 
 @Composable
-private fun installationHint(candidate: DeviceCandidate): String = when (candidate.profile.provisioningMode) {
-    ProvisioningMode.RequiresWifiCredentials -> stringResource(R.string.wifi_credentials_install_hint)
-    ProvisioningMode.AlreadyNetworked -> stringResource(R.string.networked_install_hint)
-    ProvisioningMode.Unsupported -> stringResource(R.string.unsupported_install_hint)
-}
+private fun installationHint(candidate: DeviceCandidate): String =
+    if (candidate.device.id.startsWith("shelly-ap:")) {
+        "Приложение попросит Android подключиться к точке доступа Shelly, передаст параметры домашней сети и найдёт устройство по mDNS."
+    } else {
+        when (candidate.profile.provisioningMode) {
+            ProvisioningMode.RequiresWifiCredentials -> stringResource(R.string.wifi_credentials_install_hint)
+            ProvisioningMode.AlreadyNetworked -> stringResource(R.string.networked_install_hint)
+            ProvisioningMode.Unsupported -> stringResource(R.string.unsupported_install_hint)
+        }
+    }
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
@@ -775,6 +814,10 @@ private fun ControlScreen(
             verticalArrangement = Arrangement.spacedBy(24.dp),
         ) {
             Text(device.room, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                connectivityLabel(device.connectivityClass),
+                color = MaterialTheme.colorScheme.primary,
+            )
             Spacer(Modifier.height(16.dp))
             Box(
                 modifier = Modifier
@@ -853,6 +896,13 @@ private fun ControlScreen(
             },
         )
     }
+}
+
+private fun connectivityLabel(connectivityClass: ConnectivityClass): String = when (connectivityClass) {
+    ConnectivityClass.LocalNative -> "Работает локально"
+    ConnectivityClass.LocalAfterActivation -> "Локально после активации"
+    ConnectivityClass.LocalGateway -> "Через локальный хаб"
+    ConnectivityClass.CloudOnly -> "Требуется интернет"
 }
 
 @Composable

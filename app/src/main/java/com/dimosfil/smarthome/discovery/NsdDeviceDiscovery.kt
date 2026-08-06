@@ -14,6 +14,7 @@ class NsdDeviceDiscovery(
     context: Context,
     private val serviceTypes: List<String> = listOf(
         "_smart-switch._tcp.",
+        "_shelly._tcp.",
         "_http._tcp.",
         "_esphomelib._tcp.",
     ),
@@ -94,8 +95,14 @@ class NsdDeviceDiscovery(
             override fun onServiceResolved(resolved: NsdServiceInfo) {
                 val host = resolved.host?.hostAddress ?: return
                 val endpoint = formatEndpoint(host, resolved.port)
+                val isShelly = resolved.serviceType.startsWith("_shelly._tcp", ignoreCase = true) ||
+                    resolved.serviceName.startsWith("shelly", ignoreCase = true)
                 val device = SmartDevice(
-                    id = "wifi:$endpoint",
+                    id = if (isShelly) {
+                        "shelly:${resolved.serviceName.lowercase()}"
+                    } else {
+                        "wifi:$endpoint"
+                    },
                     name = resolved.serviceName.ifBlank { "Wi-Fi $endpoint" },
                     transport = DeviceTransport.Wifi,
                     endpoint = endpoint,

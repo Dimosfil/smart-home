@@ -9,8 +9,14 @@ Service Discovery (DNS-SD), and Gradle. See
 
 ## Research and workflow contracts
 
+- Universal multi-ecosystem and outage-resilience product contract:
+  `tools/project-memory/specs/universal-device-platform.md`
+- Offline-only LAN architecture and device comparison:
+  `docs/offline-lan-device-research.md`
 - Device onboarding protocols and Smart Life/Tuya analysis:
   `docs/device-onboarding-protocols.md`
+- Implementation-driving offline LAN contract:
+  `tools/project-memory/specs/offline-lan-architecture.md`
 - Portable eight-stage onboarding contract:
   `tools/project-memory/specs/device-onboarding-workflow.md`
 - Real Tuya SDK setup and phone verification:
@@ -24,6 +30,13 @@ The first usable release should demonstrate one complete device workflow:
 - display connection status and current state;
 - execute at least one meaningful control action;
 - show understandable connection and command errors.
+
+The product combines cloud-backed and local device ecosystems in one app. An
+internet outage must not disable devices with a verified local path; cloud-only
+models remain supported online and are labelled as requiring internet. Tuya is
+retained, while Shelly Gen2+/Gen3 direct JSON-RPC is the selected first
+local-native implementation direction. See the universal platform contract for
+connectivity classes, routing rules, and availability boundaries.
 
 The first device category is a physical smart switch. Runtime discovery contains
 only observations from Android BLE scanning and selected DNS-SD service types;
@@ -43,12 +56,20 @@ through the prototype HTTP contract documented in
 - profile/provisioner/controller adapter registries for real integrations;
 - persistent device name, room, endpoint, connectivity, and last power state;
 - state read and on/off commands for the prototype local HTTP adapter;
+- independent local Shelly discovery through `_shelly._tcp`, factory-AP
+  detection, Android local-only AP connection, Wi-Fi provisioning, and
+  JSON-RPC state/read-back control;
+- explicit `Работает локально` / `Требуется интернет` capability labels;
 - confirmed device removal, including Tuya Home unbinding before local deletion;
 - visible permission, discovery, transport, timeout, protocol, and HTTP errors.
 - Smart Life App SDK 7.8.0 integration: automatic UID session/Home preparation, Tuya BLE scan,
   combo-device activation, DP power discovery, and on/off commands. A
   project-specific `security-algorithm.aar`, AppKey/AppSecret, registered
   signing certificate, and physical-device test are required to enable it.
+
+Local discovery and Shelly control remain available when Tuya login or internet
+access is unavailable. Physical Shelly provisioning and relay verification are
+still required before declaring a specific model supported.
 
 BLE advertisements do not define a universal control protocol. Controlling a
 physical BLE switch requires its model and GATT service/characteristic contract.

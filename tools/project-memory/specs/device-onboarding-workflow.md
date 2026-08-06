@@ -2,15 +2,21 @@
 
 Last reviewed: 2026-08-05
 
-Status: the Tuya-first Smart Life SDK adapter is implemented for account/Home,
+Status: the Tuya Smart Life SDK adapter is implemented for account/Home,
 BLE discovery, combo activation, persistence, DP on/off control, and confirmed
-cloud unbinding before local deletion. Runtime
-enablement and physical verification are pending the app-specific Tuya security
-component, credentials, registered signing certificate and reference device.
+cloud unbinding before local deletion, but it is now an optional cloud-backed
+profile. The selected primary requirement is fresh provisioning and control
+without WAN or mobile data. A direct Shelly Gen2+/Gen3 JSON-RPC profile is the
+recommended first offline implementation; exact device procurement and physical
+verification are pending.
 No simulated candidate is injected into runtime discovery.
 
 Human-facing protocol research and official source links:
 [`docs/device-onboarding-protocols.md`](../../../docs/device-onboarding-protocols.md).
+The offline-LAN decision and detailed acceptance conditions are canonical in
+[`offline-lan-architecture.md`](offline-lan-architecture.md).
+The multi-ecosystem goal, connectivity classes, and outage behavior are
+canonical in [`universal-device-platform.md`](universal-device-platform.md).
 
 ## Product intent
 
@@ -318,7 +324,9 @@ is a successful pairing plus physical relay toggle on the selected product.
 
 ## Selected integration direction
 
-Tuya Smart Life App SDK is the first production adapter because it most closely
-matches the target workflow. Matter, Shelly, ESPHome Improv, and documented
-vendor adapters remain extension points behind the same registries. Only
-evidence from a selected physical device can complete the product workflow.
+The platform retains Tuya Smart Life and adds direct Shelly Gen2+/Gen3 local
+JSON-RPC with AP provisioning and mDNS rediscovery. Tuya must not gate discovery
+or use of local adapters; adapter failures remain isolated.
+ESPHome Improv, Home Assistant, Matter, and documented vendor adapters remain
+extension points behind the same registries. Only strict offline evidence from
+a selected physical device can complete the product workflow.

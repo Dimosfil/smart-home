@@ -24,7 +24,7 @@ stack facts, commands, runtime assumptions, and operational notes here.
 | Language/runtime | Kotlin 2.1.10, Java 17 bytecode | `build.gradle.kts`, `app/build.gradle.kts` | Android API 26+ |
 | Frontend | Jetpack Compose BOM 2025.02.00, Material 3 | `app/build.gradle.kts`, `MainActivity.kt` | Russian prototype UI |
 | Device discovery | Android BLE scan, `WifiManager` access-point scan, and `NsdManager` DNS-SD | `discovery/`, `onboarding/AndroidWifiNetworkScanner.kt` | BLE, selectable 2.4 GHz SSIDs, and local Wi-Fi services |
-| Device onboarding/control | Smart Life SDK 7.8.0 Tuya adapter plus profile/provisioner/controller/remover boundaries and local HTTP controller | `tuya/`, `onboarding/`, `control/` | Tuya runtime requires app-specific security AAR and credentials |
+| Device onboarding/control | Smart Life SDK 7.8.0 Tuya adapter plus Shelly AP/mDNS/JSON-RPC and generic local HTTP adapters | `tuya/`, `onboarding/`, `control/` | Tuya is cloud-backed; Shelly software path is implemented but physical verification is pending |
 | Data/storage | `StateFlow` UI state and SharedPreferences JSON device store | `OnboardingViewModel.kt`, `persistence/DeviceStore.kt` | Wi-Fi passwords are never persisted |
 | Build/package | Gradle 8.11.1, Android Gradle Plugin 8.9.2 | wrapper and Gradle manifests | Debug APK verified |
 | Test/quality | JUnit 4 and Android lint | `app/src/test/`, Gradle tasks | Physical-device checks outstanding |
@@ -45,12 +45,15 @@ stack facts, commands, runtime assumptions, and operational notes here.
 | --- | --- | --- | --- |
 | Local smart switch | Device discovery and commands | `smart-switch-mvp.md` | Local network; protocol adapter required |
 | Tuya Smart Life SDK | BLE discovery, combo activation, account/Home, DP control and device unbinding | `tuya/TuyaIntegration.kt`, `docs/tuya-setup.md` | App credentials, security component, registered SHA-256 and physical device are required |
+| Shelly Gen2+/Gen3 | Offline AP provisioning, mDNS discovery, and JSON-RPC control | `ShellyProvisioner.kt`, `ShellySwitchController.kt` | Implemented in app; physical model, outage evidence, and TLS strategy pending |
 
 ## Gaps
 
-- Select the first physical switch model and document its provisioning and
-  command protocol.
+- Procure and verify an exact Shelly Gen2+/Gen3 plug model with a `Switch`
+  component; the protocol and acceptance contract are documented.
+- Verify the implemented Shelly AP provisioner, mDNS profile, JSON-RPC
+  controller, and endpoint rediscovery on the selected physical plug.
 - Verify BLE, Wi-Fi access-point scan, and DNS-SD behavior on a physical Android
   device.
-- Replace prototype cleartext HTTP with an authenticated secure device contract
-  before production use.
+- Prove the firmware 2.0 HTTPS trust/pinning or private-CA strategy; replace
+  prototype cleartext HTTP before production use.

@@ -3,6 +3,8 @@ package com.dimosfil.smarthome.persistence
 import android.content.Context
 import androidx.core.content.edit
 import com.dimosfil.smarthome.model.DeviceTransport
+import com.dimosfil.smarthome.onboarding.ConnectivityClass
+import com.dimosfil.smarthome.onboarding.DeviceProfileRegistry
 import com.dimosfil.smarthome.onboarding.SavedDevice
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -56,6 +58,10 @@ class SharedPreferencesDeviceStore(context: Context) : DeviceStore {
                         serviceType = item.optString("serviceType").takeIf(String::isNotBlank),
                         powerState = if (item.isNull("powerState")) null else item.getBoolean("powerState"),
                         isOnline = item.optBoolean("isOnline", true),
+                        connectivityClass = item.optString("connectivityClass")
+                            .takeIf(String::isNotBlank)
+                            ?.let { runCatching { ConnectivityClass.valueOf(it) }.getOrNull() }
+                            ?: legacyConnectivityClass(item.getString("profileId")),
                     ),
                 )
             }
@@ -89,12 +95,20 @@ class SharedPreferencesDeviceStore(context: Context) : DeviceStore {
                     put("serviceType", device.serviceType ?: "")
                     put("powerState", device.powerState ?: JSONObject.NULL)
                     put("isOnline", device.isOnline)
+                    put("connectivityClass", device.connectivityClass.name)
                 },
             )
         }
     }.toString()
 
     private companion object {
+        fun legacyConnectivityClass(profileId: String): ConnectivityClass = when (profileId) {
+            DeviceProfileRegistry.shellyProfile.id,
+            DeviceProfileRegistry.prototypeHttpProfile.id,
+            -> ConnectivityClass.LocalNative
+            else -> ConnectivityClass.CloudOnly
+        }
+
         const val PREFERENCES_NAME = "smart_home_devices"
         const val KEY_DEVICES = "saved_devices"
         const val LEGACY_DEMO_ID_PREFIX = "emulator:"

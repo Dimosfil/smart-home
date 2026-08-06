@@ -8,6 +8,12 @@ The Android application discovers nearby smart-device candidates over BLE and
 local-network DNS-SD, lets the user select one, reads a compatible Wi-Fi
 switch's current state, and sends an on/off command.
 
+The selected physical acceptance path must run with WAN and mobile data
+disabled. Its canonical architecture and failure contract are defined in
+`offline-lan-architecture.md`; direct Shelly Gen2+/Gen3 JSON-RPC is the first
+implementation direction. The generic HTTP contract below remains a prototype
+adapter and is not evidence of Shelly support.
+
 The planned expansion from discovery/control into the complete eight-stage
 onboarding flow is defined in `device-onboarding-workflow.md`. The protocol
 research and official external references are maintained in
